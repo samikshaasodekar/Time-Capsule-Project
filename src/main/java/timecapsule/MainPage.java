@@ -144,7 +144,7 @@ public class MainPage extends JFrame {
 
         // Email configuration
         String from = "samikshaasodekar20@gmail.com";
-        String password = "mkwv acuu chth shjd";
+        String password = " ";
 
         Properties properties = new Properties();
         properties.setProperty("mail.smtp.host", "smtp.gmail.com");
