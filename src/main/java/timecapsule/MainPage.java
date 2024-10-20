@@ -143,7 +143,7 @@ public class MainPage extends JFrame {
         }
 
         // Email configuration
-        String from = "samikshaasodekar20@gmail.com";
+        String from = "s@gmail.com";
         String password = " ";
 
         Properties properties = new Properties();
