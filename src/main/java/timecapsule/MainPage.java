@@ -4,43 +4,56 @@ import com.toedter.calendar.JDateChooser;
 import javax.mail.*;
 import javax.mail.internet.*;
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.*;
-import java.io.File;
-import java.sql.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.text.SimpleDateFormat;
 import java.util.Properties;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 public class MainPage extends JFrame {
 
     private JTextArea messageArea;
     private JDateChooser dateChooser;
     private JTextField emailField;
-    private JComboBox<String> styleComboBox;
-    private JComboBox<String> audienceComboBox;
-    private JButton saveButton, uploadButton, sendButton;
+    private JButton saveButton, sendButton, exitButton;
+    private JRadioButton privateRadioButton, publicRadioButton;
+    private String userEmail;
 
     public MainPage(String userEmail) {
+        this.userEmail = userEmail; // Store the user email
         setTitle("Time Capsule");
         setSize(800, 600);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); // Prevent closing without confirmation
         setLocationRelativeTo(null);
         initComponents();
+
+        // Custom close behavior
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                exitApplication();
+            }
+        });
     }
 
     private void initComponents() {
-        JPanel panel = new JPanel();
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Set the background image here
+                ImageIcon background = new ImageIcon("C:/Engineering Notes/New Projects/TimeCapsuleProject/src/main/java/images/img3.jpeg");
+                g.drawImage(background.getImage(), 0, 0, getWidth(), getHeight(), this);
+            }
+        };
         panel.setLayout(null);
 
         JLabel messageLabel = new JLabel("Write your letter:");
         messageLabel.setBounds(50, 50, 120, 25);
         panel.add(messageLabel);
 
-        messageArea = new JTextArea();
+        messageArea = new JTextArea("Dear Me,"); // Set default text
+        messageArea.setCaretPosition(messageArea.getText().length());
         JScrollPane scrollPane = new JScrollPane(messageArea);
         scrollPane.setBounds(50, 80, 500, 200);
         panel.add(scrollPane);
@@ -52,13 +65,7 @@ public class MainPage extends JFrame {
         String[] dateOptions = {"6 months", "1 year", "3 years", "5 years", "10 years", "Choose a date"};
         JComboBox<String> dateComboBox = new JComboBox<>(dateOptions);
         dateComboBox.setBounds(150, 300, 200, 25);
-        dateComboBox.addActionListener(e -> {
-            if ("Choose a date".equals(dateComboBox.getSelectedItem().toString())) {
-                dateChooser.setEnabled(true);
-            } else {
-                dateChooser.setEnabled(false);
-            }
-        });
+        dateComboBox.addActionListener(e -> dateChooser.setEnabled("Choose a date".equals(dateComboBox.getSelectedItem().toString())));
         panel.add(dateComboBox);
 
         dateChooser = new JDateChooser();
@@ -74,114 +81,76 @@ public class MainPage extends JFrame {
         emailField.setBounds(180, 350, 200, 25);
         panel.add(emailField);
 
-        JLabel styleLabel = new JLabel("Pick your style:");
-        styleLabel.setBounds(50, 400, 100, 25);
-        panel.add(styleLabel);
-
-        String[] styles = {"Classic", "Modern", "Bold", "Elegant"};
-        styleComboBox = new JComboBox<>(styles);
-        styleComboBox.setBounds(150, 400, 150, 25);
-        panel.add(styleComboBox);
-
+        // Audience selection
         JLabel audienceLabel = new JLabel("Select your audience:");
-        audienceLabel.setBounds(50, 450, 150, 25);
+        audienceLabel.setBounds(50, 400, 150, 25);
         panel.add(audienceLabel);
 
-        String[] audiences = {"Private", "Public, but anonymous"};
-        audienceComboBox = new JComboBox<>(audiences);
-        audienceComboBox.setBounds(200, 450, 200, 25);
-        panel.add(audienceComboBox);
+        privateRadioButton = new JRadioButton("Private");
+        privateRadioButton.setBounds(200, 400, 80, 25);
+        panel.add(privateRadioButton);
+
+        publicRadioButton = new JRadioButton("Public, but anonymous");
+        publicRadioButton.setBounds(280, 400, 200, 25);
+        panel.add(publicRadioButton);
+
+        ButtonGroup audienceGroup = new ButtonGroup();
+        audienceGroup.add(privateRadioButton);
+        audienceGroup.add(publicRadioButton);
 
         saveButton = new JButton("Save Letter");
         saveButton.setBounds(50, 500, 150, 25);
         panel.add(saveButton);
 
-        uploadButton = new JButton("Upload Multimedia");
-        uploadButton.setBounds(220, 500, 150, 25);
-        panel.add(uploadButton);
-
         sendButton = new JButton("Send Letter");
         sendButton.setBounds(400, 500, 150, 25);
         panel.add(sendButton);
 
+        // Exit button
+        exitButton = new JButton("Exit");
+        exitButton.setBounds(600, 500, 150, 25);
+        exitButton.addActionListener(e -> exitApplication());
+        panel.add(exitButton);
+
         add(panel);
 
         // Action listeners for buttons
-        saveButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                saveMultimediaPath();
-            }
-
-            private void saveMultimediaPath() {
-                // Implement the functionality here if needed
-            }
-        });
-
-        uploadButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                uploadMultimedia();
-            }
-        });
-
-        sendButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                sendLetter();
-            }
-        });
+        saveButton.addActionListener(e -> saveLetter());
+        sendButton.addActionListener(e -> sendLetter());
     }
 
-//    public void saveMultimediaPath(String filePath) {
-//        String url = "jdbc:mysql://localhost:3306/timecapsule"; 
-//        String user = "root"; 
-//        String password = "root"; 
-//
-//        try (Connection conn = DriverManager.getConnection(url, user, password)) {
-//            String query = "INSERT INTO multimedia (file_path) VALUES (?)";
-//            try (PreparedStatement stmt = conn.prepareStatement(query)) {
-//                stmt.setString(1, filePath);
-//                stmt.executeUpdate();
-//            }
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//        }
-//    }
-    
-    private void uploadMultimedia() {
-        JFileChooser fileChooser = new JFileChooser();
-        int result = fileChooser.showOpenDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            File selectedFile = fileChooser.getSelectedFile();
-            String filePath = selectedFile.getAbsolutePath();
-
-            // Comment out or remove this line since we're not saving file paths to the database
-            // saveMultimediaPath(filePath);
-            // Optionally, you could copy the file to a designated directory
-            // File destinationFile = new File("path/to/save/" + selectedFile.getName());
-            // Files.copy(selectedFile.toPath(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            JOptionPane.showMessageDialog(this, "Multimedia uploaded successfully!");
+    private void exitApplication() {
+        int confirm = JOptionPane.showConfirmDialog(this, "Do you really want to exit?", "Exit Confirmation", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            System.exit(0);
         }
+    }
+
+    private void saveLetter() {
+        JOptionPane.showMessageDialog(this, "Letter saved successfully!");
     }
 
     private void sendLetter() {
         String message = messageArea.getText();
-        String deliveryDate = ((JTextField) dateChooser.getDateEditor().getUiComponent()).getText();
         String email = emailField.getText();
-        String style = styleComboBox.getSelectedItem().toString();
-        String audience = audienceComboBox.getSelectedItem().toString();
+        String audience = privateRadioButton.isSelected() ? "Private" : "Public, but anonymous";
+
+        // Get the selected delivery date
+        String deliveryDate = null;
+        if (dateChooser.getDate() != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            deliveryDate = sdf.format(dateChooser.getDate());
+        }
 
         // Email configuration
         String from = "samikshaasodekar20@gmail.com";
-        String password = "aqez wzqb jpku plwx";
-        String host = "smtp.gmail.com"; // SMTP server address
+        String password = "mkwv acuu chth shjd";
 
         Properties properties = new Properties();
-        properties.setProperty("mail.smtp.host", host);
-        properties.setProperty("mail.smtp.port", "587"); // Common port for SMTP
+        properties.setProperty("mail.smtp.host", "smtp.gmail.com");
+        properties.setProperty("mail.smtp.port", "587");
         properties.setProperty("mail.smtp.auth", "true");
-        properties.setProperty("mail.smtp.starttls.enable", "true"); // Enable TLS
+        properties.setProperty("mail.smtp.starttls.enable", "true");
 
         Session session = Session.getInstance(properties, new Authenticator() {
             @Override
@@ -191,13 +160,21 @@ public class MainPage extends JFrame {
         });
 
         try {
+            // Save the letter to the database
+            DatabaseHelper db = new DatabaseHelper();
+            if ("Private".equals(audience)) {
+                db.saveLetter(email, "Private letter (content hidden)", deliveryDate, "", audience);
+            } else {
+                db.saveLetter(email, message, deliveryDate, "", audience);
+            }
+
+            // Send the email
             MimeMessage mimeMessage = new MimeMessage(session);
             mimeMessage.setFrom(new InternetAddress(from));
             mimeMessage.addRecipient(Message.RecipientType.TO, new InternetAddress(email));
             mimeMessage.setSubject("Your Time Capsule Letter");
-            mimeMessage.setText(message); // Set the email body
+            mimeMessage.setText("Audience: " + audience + "\n\n" + message);
 
-            // Send the email
             Transport.send(mimeMessage);
             JOptionPane.showMessageDialog(this, "Letter sent successfully!");
         } catch (MessagingException mex) {
@@ -206,6 +183,7 @@ public class MainPage extends JFrame {
         }
     }
 }
+
 
 /*
     @SuppressWarnings("unchecked")
@@ -238,4 +216,3 @@ public class MainPage extends JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
-
